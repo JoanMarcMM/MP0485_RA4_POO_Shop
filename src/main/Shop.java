@@ -8,7 +8,7 @@ import model.Employee;
 import model.Client;
 import java.util.Scanner;
 
-public class Shop implements Logable,Payable {
+public class Shop implements Logable {
 
     Amount cash = new Amount(100.00);
     private ArrayList<Product> inventory = new ArrayList<Product>();
@@ -123,22 +123,26 @@ public class Shop implements Logable,Payable {
         int user;
         String password;
         boolean loggedin = false;
+        boolean valid = false;
+        try {
+            System.out.println("===========================");
+            System.out.println("Log in menu.");
+            System.out.println("===========================");
+            System.out.print("Employee ID: ");
+            user = sc.nextInt();
+            System.out.print("Password: ");
+            password = sc.nextLine();
+            //Adding extra scanner because sc not working properly.
+            password = sc.nextLine();
 
-        System.out.println("===========================");
-        System.out.println("Log in menu.");
-        System.out.println("===========================");
-        System.out.print("Employee ID: ");
-        user = sc.nextInt();
-        System.out.print("Password: ");
-        password = sc.nextLine();
-        //Adding extra scanner because sc not working properly.
-        password = sc.nextLine();
-
-        if (user == employee.getEMPLOYEE_ID() && password.equals(employee.getPASSWORD())) {
-            System.out.println("Log in successful.");
-            loggedin = true;
-        } else {
-            System.out.println("Employee not found.");
+            if (user == employee.getEMPLOYEE_ID() && password.equals(employee.getPASSWORD())) {
+                System.out.println("Log in successful.");
+                loggedin = true;
+            } else {
+                System.out.println("Employee not found.");
+            }
+        } catch (Exception e) {
+            System.out.println("Please introduce valid data.");
         }
 
         return loggedin;
@@ -166,6 +170,7 @@ public class Shop implements Logable,Payable {
      */
     public void addProduct() {
         boolean admitir = true;
+        boolean valid = false;
 
         Scanner scanner = new Scanner(System.in);
 
@@ -180,12 +185,19 @@ public class Shop implements Logable,Payable {
             }
         }
         if (admitir) {
-            System.out.print("Wholesale price: ");
-            double wholesalerPrice = scanner.nextDouble();
-            System.out.print("Stock: ");
-            int stock = scanner.nextInt();
+            do {
+                try {
+                    System.out.print("Wholesale price: ");
+                    double wholesalerPrice = scanner.nextDouble();
+                    System.out.print("Stock: ");
+                    int stock = scanner.nextInt();
 
-            addProduct(new Product(name, wholesalerPrice, true, stock));
+                    addProduct(new Product(name, wholesalerPrice, true, stock));
+                    valid = true;
+                } catch (Exception e) {
+                    System.out.println("Please introduce a valid input.");
+                }
+            } while (valid == false);
         }
     }
 
@@ -197,15 +209,23 @@ public class Shop implements Logable,Payable {
         System.out.print("Select the name of the product: ");
         String name = scanner.next();
         Product product = findProduct(name);
+        boolean valid = false;
 
         if (product != null) {
-            // ask for stock
-            System.out.print("Select the quantity that will be added: ");
-            int stock = scanner.nextInt();
-            // update stock product
-            product.setStock(product.getStock() + stock);
-            System.out.println("The stock of the product" + name + " has been updated to " + product.getStock());
+            do {
+                try {
 
+                    // ask for stock
+                    System.out.print("Select the quantity that will be added: ");
+                    int stock = scanner.nextInt();
+                    // update stock product
+                    product.setStock(product.getStock() + stock);
+                    System.out.println("The stock of the product" + name + " has been updated to " + product.getStock());
+
+                } catch (Exception e) {
+                    System.out.println("Please introduce a valid input.");
+                }
+            } while (valid == false);
         } else {
             System.out.println("The product " + name + " has not been found.");
         }
@@ -223,7 +243,7 @@ public class Shop implements Logable,Payable {
 
         if (product != null) {
             product.expire();
-            System.out.println("THe price of the product " + name + " has been updated to " + product.getPublicPriceCurrency());
+            System.out.println("The price of the product " + name + " has been updated to " + product.getPublicPriceCurrency());
 
         }
     }
@@ -254,8 +274,6 @@ public class Shop implements Logable,Payable {
         //Creo arrayList para guardar los productos de la venta.
         ArrayList<Product> listaProductosSale = new ArrayList<Product>();
 
-        boolean found = false;
-
         boolean oweMoney = false;
 
         // ask for client name
@@ -263,86 +281,58 @@ public class Shop implements Logable,Payable {
 
         System.out.println("Processing sale, write the name of the client");
         String nameClient = sc.nextLine();
-        for (Client client : clients) {
-            if (client.getName().equalsIgnoreCase(nameClient)) {
-                found = true;
+
+        Client client = new Client(456, 50.00, nameClient);
+
+        // sale product until input name is not 0
+        double totalAmount = 0.0;
+        String name = "";
+
+        while (!name.equals("0")) {
+            System.out.println("Introduce the name of the product, write 0 to end process:");
+            name = sc.nextLine();
+
+            if (name.equals("0")) {
+                break;
             }
+            Product product = findProduct(name);
+            boolean productAvailable = false;
+
+            if (product != null && product.isAvailable()) {
+                productAvailable = true;
+                totalAmount += product.getPublicPrice();
+                product.setStock(product.getStock() - 1);
+                listaProductosSale.add(product);
+                // if no more stock, set as not available to sale
+                if (product.getStock() == 0) {
+                    product.setAvailable(false);
+                }
+
+                System.out.println("Product added successfully");
+            }
+
+            if (!productAvailable) {
+                System.out.println("Product not found or out of stock");
+            }
+
         }
 
-        if (found == true) {
-            // sale product until input name is not 0
-            double totalAmount = 0.0;
-            String name = "";
+        //Creo el objeto sale y lo guardo en sales
+        sales.add(new Sale(client, listaProductosSale, totalAmount));
 
-            while (!name.equals("0")) {
-                System.out.println("Introduce the name of the product, write 0 to end process:");
-                name = sc.nextLine();
+        // show cost total
+        totalAmount = totalAmount * TAX_RATE;
+        cash.setValue(cash.getValue() + totalAmount);
+        System.out.println("Sale made successfully, total: " + totalAmount + "$");
 
-                if (name.equals("0")) {
-                    break;
-                }
-                Product product = findProduct(name);
-                boolean productAvailable = false;
+        oweMoney = client.pay(client, totalAmount);
 
-                if (product != null && product.isAvailable()) {
-                    productAvailable = true;
-                    totalAmount += product.getPublicPrice();
-                    product.setStock(product.getStock() - 1);
-                    listaProductosSale.add(product);
-                    // if no more stock, set as not available to sale
-                    if (product.getStock() == 0) {
-                        product.setAvailable(false);
-                    }
-
-                    System.out.println("Product added successfully");
-                }
-
-                if (!productAvailable) {
-                    System.out.println("Product not found or out of stock");
-                }
-
-            }
-            for (Client client : clients) {
-                if (client.getName().equalsIgnoreCase(nameClient)) {
-
-                    //Creo el objeto sale y lo guardo en sales
-                    sales.add(new Sale(client, listaProductosSale, totalAmount));
-
-                    // show cost total
-                    totalAmount = totalAmount * TAX_RATE;
-                    cash.setValue(cash.getValue() + totalAmount);
-                    System.out.println("Sale made successfully, total: " + totalAmount + "$");
-
-                    oweMoney = pay(client, totalAmount);
- 
-                    if(oweMoney==true){
-                        System.out.println(client.getName()+" owes: "+(client.getBALANCE().getValue()-totalAmount));
-                    }
-                    else{
-                        System.out.println(client.getName()+" doesn't own anything! ");
-                    }
-
-                }
-            }
-
+        if (oweMoney == true) {
+            System.out.println(client.getName() + " owes: " + (client.getBALANCE().getValue() - totalAmount));
         } else {
-            System.out.println("Client not found.");
+            System.out.println(client.getName() + " doesn't own anything! ");
         }
-    }
 
-    /**
-     * Pay sale
-     */
-    @Override
-    public boolean pay(Client client, double totalAmount) {
-
-        boolean oweMoney = false;
-        double total= client.getBALANCE().getValue()-totalAmount;
-        
-        if(total<0){
-            oweMoney=true;
-        }
-        return oweMoney;
     }
 
     /**
@@ -354,12 +344,11 @@ public class Shop implements Logable,Payable {
             if (sale != null) {
 
                 System.out.println("===========================");
-                
-                
+                System.out.println("Id Sale: " + sales.indexOf(sale));
                 System.out.println("Client: " + sale.getClient().getName());
                 System.out.println("Products: ");
                 for (Product product : sale.getProducts()) {
-                    System.out.println(product.getName()+", Precio: "+product.getPublicPriceCurrency());
+                    System.out.println(product.getName() + ", Precio: " + product.getPublicPriceCurrency());
                 }
                 System.out.println("");
                 System.out.println("Price: " + sale.getAmountCurrency());
@@ -377,7 +366,7 @@ public class Shop implements Logable,Payable {
     }
 
     /**
-     * show number of sales
+     * Delete product
      */
     private void deleteProductInventory() {
         Scanner sc = new Scanner(System.in);

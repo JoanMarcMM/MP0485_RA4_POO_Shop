@@ -8,7 +8,8 @@ package model;
  *
  * @author jooan
  */
-public class Client extends Person {
+import main.Payable;
+public class Client extends Person implements Payable {
     
     private int memberId;
     private Amount balance;
@@ -50,5 +51,16 @@ public class Client extends Person {
         return BALANCE;
     }
     
-    
+    public boolean pay(Client client, double totalAmount) {
+
+        boolean oweMoney = false;
+        balance.setValue(balance.getValue()-totalAmount);
+        
+        if(balance.getValue()<0){
+            oweMoney=true;
+        }
+        
+        System.out.println(client.getName()+"'s balance: "+balance.getValueCurrency());
+        return oweMoney;
+    }
 }
